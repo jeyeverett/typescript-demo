@@ -1,3 +1,39 @@
+interface Validatable {
+  value: string;
+  required?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+}
+
+function validate(input: Validatable) {
+  const { value, required, minLength, maxLength, min, max } = input;
+  let isValid = true;
+
+  if (required) {
+    isValid = isValid && value.trim().length !== 0;
+  }
+
+  if (minLength) {
+    isValid = isValid && value.trim().length >= minLength;
+  }
+
+  if (maxLength) {
+    isValid = isValid && value.trim().length <= maxLength;
+  }
+
+  if (min) {
+    isValid = isValid && Number(value.trim()) >= min;
+  }
+
+  if (max) {
+    isValid = isValid && Number(value.trim()) <= max;
+  }
+
+  return isValid;
+}
+
 function Autobind(_: any, _2: string, descriptor: PropertyDescriptor) {
   const originalMethod = descriptor.value;
   const newDescriptor: PropertyDescriptor = {
@@ -43,20 +79,35 @@ class ProjectInput {
     this.attachElement();
   }
 
-  private getUserInput(): [string, string, number] | void {
+  private getUserInput(): [string, string, string] | void {
     const { value: titleInput } = this.titleInputElement;
     const { value: descInput } = this.descInputElement;
     const { value: peopleInput } = this.peopleInputElement;
 
-    if (
-      titleInput.trim().length === 0 ||
-      descInput.trim().length === 0 ||
-      peopleInput.trim().length === 0
-    ) {
+    const validTitle: Validatable = {
+      value: titleInput,
+      required: true,
+    };
+
+    const validDesc: Validatable = {
+      value: descInput,
+      required: true,
+      minLength: 10,
+      maxLength: 200,
+    };
+
+    const validPeople: Validatable = {
+      value: peopleInput,
+      required: true,
+      min: 1,
+      max: 10,
+    };
+
+    if (validate(validTitle) && validate(validDesc) && validate(validPeople)) {
+      return [titleInput, descInput, peopleInput];
+    } else {
       alert("Invalid input, please try again");
       return;
-    } else {
-      return [titleInput, descInput, Number(peopleInput)];
     }
   }
 
