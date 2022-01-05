@@ -141,9 +141,30 @@ abstract class Component<T extends HTMLElement, U extends HTMLElement> {
   abstract renderContent(): void;
 }
 
+/* PROJECT LIST ITEM CLASS */
+class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
+  private project: Project;
+
+  constructor(hostId: string, project: Project) {
+    super("single-project", hostId, "beforeend", project.id);
+    this.project = project;
+
+    this.configure();
+    this.renderContent();
+  }
+
+  configure() {}
+
+  renderContent() {
+    this.element.querySelector("h2")!.textContent = this.project.title;
+    this.element.querySelector("h3")!.textContent = String(this.project.people);
+    this.element.querySelector("p")!.textContent = this.project.description;
+  }
+}
+
 /* PROJECT LIST CLASS */
 class ProjectList extends Component<HTMLDivElement, HTMLElement> {
-  activeProjects: Project[] = [];
+  private projects: Project[] = [];
 
   constructor(private type: ProjectStatus) {
     super("project-list", "app", "beforeend", `${type}-projects`);
@@ -151,24 +172,27 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> {
     this.renderContent();
   }
 
-  private renderProjects(status: ProjectStatus) {
+  private renderProjects() {
     const ulElement = document.getElementById(
-      `${status}-projects-list`
+      `${this.type}-projects-list`
     ) as HTMLUListElement;
 
     ulElement.replaceChildren();
 
-    for (const project of this.activeProjects) {
-      const liElement = document.createElement("li");
-      liElement.textContent = project.title;
-      ulElement.appendChild(liElement);
+    for (const project of this.projects) {
+      new ProjectItem(this.element.querySelector("ul")!.id, project);
     }
   }
 
   configure() {
     ProjectState.addListener((projects: Project[]) => {
-      this.activeProjects = projects;
-      this.renderProjects(ProjectStatus.Active);
+      const filteredProjects = projects.filter((project) =>
+        this.type === "active"
+          ? project.status === ProjectStatus.Active
+          : project.status === ProjectStatus.Completed
+      );
+      this.projects = filteredProjects;
+      this.renderProjects();
     });
   }
 
