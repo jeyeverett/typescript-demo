@@ -92,6 +92,7 @@ button:active {
   box-shadow: 1px 1px 8px rgba(0, 0, 0, 0.26);
   padding: 1rem;
   margin: 1rem;
+  background: white;
 }
 
 .projects li h2 {
@@ -113,11 +114,20 @@ button:active {
 }
 
 .droppable {
-  background: #ffe3ee;
+  background: rgba(4, 50, 175, 0.25);
+}
+
+#active-projects-list,
+#completed-projects-list {
+  transition: all 0.2s;
 }
 
 #completed-projects .droppable {
-  background: #d6e1ff;
+  background: #ffbb002f;
+}
+
+.drag-child {
+  pointer-events: none;
 }
 
 #user-input {

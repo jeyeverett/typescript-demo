@@ -1,3 +1,16 @@
+/* DRAG AND DROP */
+interface Draggable {
+  dragStartHandler(event: DragEvent): void;
+  dragEndHandler(event: DragEvent): void;
+}
+
+interface Droppable {
+  dragOverHandler(event: DragEvent): void;
+  dragLeaveHandler(event: DragEvent): void;
+  dropHandler(event: DragEvent): void;
+}
+
+/* APPLICATION STATE MANAGEMENT */
 enum ProjectStatus {
   Active = "active",
   Completed = "completed",
@@ -13,7 +26,6 @@ class Project {
   ) {}
 }
 
-/* APPLICATION STATE MANAGEMENT */
 type Listener<T> = (projects: T[]) => void;
 
 class ProjectState {
@@ -47,6 +59,18 @@ class ProjectState {
 
     this.projects.push(newProject);
 
+    this.updateListeners();
+  }
+
+  static moveProject(projectId: string, newStatus: ProjectStatus) {
+    const project = this.projects.find((project) => project.id === projectId);
+    if (project && project.status !== newStatus) {
+      project.status = newStatus;
+      this.updateListeners();
+    }
+  }
+
+  static updateListeners() {
     for (const listenerFunc of this.listeners) {
       listenerFunc([...this.projects]);
     }
@@ -142,8 +166,17 @@ abstract class Component<T extends HTMLElement, U extends HTMLElement> {
 }
 
 /* PROJECT LIST ITEM CLASS */
-class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
+class ProjectItem
+  extends Component<HTMLUListElement, HTMLLIElement>
+  implements Draggable
+{
   private project: Project;
+
+  get persons() {
+    return `${String(this.project.people)} ${
+      this.project.people > 1 ? "people" : "person"
+    } assigned.`;
+  }
 
   constructor(hostId: string, project: Project) {
     super("single-project", hostId, "beforeend", project.id);
@@ -153,23 +186,63 @@ class ProjectItem extends Component<HTMLUListElement, HTMLLIElement> {
     this.renderContent();
   }
 
-  configure() {}
+  @Autobind
+  dragStartHandler(event: DragEvent): void {
+    event.dataTransfer!.setData("text/plain", this.project.id);
+    event.dataTransfer!.effectAllowed = "move";
+  }
+
+  @Autobind
+  dragEndHandler(event: DragEvent): void {
+    console.log(event);
+  }
+
+  configure() {
+    this.element.addEventListener("dragstart", this.dragStartHandler);
+  }
 
   renderContent() {
     this.element.querySelector("h2")!.textContent = this.project.title;
-    this.element.querySelector("h3")!.textContent = String(this.project.people);
+    this.element.querySelector("h3")!.textContent = this.persons;
     this.element.querySelector("p")!.textContent = this.project.description;
   }
 }
 
 /* PROJECT LIST CLASS */
-class ProjectList extends Component<HTMLDivElement, HTMLElement> {
+class ProjectList
+  extends Component<HTMLDivElement, HTMLElement>
+  implements Droppable
+{
   private projects: Project[] = [];
 
   constructor(private type: ProjectStatus) {
     super("project-list", "app", "beforeend", `${type}-projects`);
     this.configure();
     this.renderContent();
+  }
+
+  @Autobind
+  dragOverHandler(event: DragEvent): void {
+    if (event.dataTransfer && event.dataTransfer.types[0] === "text/plain") {
+      event.preventDefault(); // default is to disallow drop events
+      const listElement = this.element.querySelector("ul")!;
+      listElement.classList.add("droppable");
+    }
+  }
+
+  @Autobind
+  dragLeaveHandler(_: DragEvent): void {
+    const listElement = this.element.querySelector("ul")!;
+    listElement.classList.remove("droppable");
+  }
+
+  @Autobind
+  dropHandler(event: DragEvent): void {
+    const projectId = event.dataTransfer!.getData("text/plain");
+    ProjectState.moveProject(
+      projectId,
+      this.type === "active" ? ProjectStatus.Active : ProjectStatus.Completed
+    );
   }
 
   private renderProjects() {
@@ -194,6 +267,10 @@ class ProjectList extends Component<HTMLDivElement, HTMLElement> {
       this.projects = filteredProjects;
       this.renderProjects();
     });
+
+    this.element.addEventListener("dragover", this.dragOverHandler);
+    this.element.addEventListener("dragleave", this.dragLeaveHandler);
+    this.element.addEventListener("drop", this.dropHandler);
   }
 
   renderContent() {
